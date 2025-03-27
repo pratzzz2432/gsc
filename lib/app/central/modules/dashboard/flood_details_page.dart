@@ -1,273 +1,117 @@
+import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/material.dart';
-import '../../common/app_drawer.dart';
-import '../../common/bottom_nav.dart';
-import '../../common/dashboard_card.dart';
-import '../community/community_page.dart';
-import '../inventory/inventory_page.dart';
-import '../settings/settings_page.dart';
-import 'disaster_details_page.dart';
-import 'flood_details_page.dart';
-//import 'earthquake_details_page.dart';
-//import 'cyclone_details_page.dart';
 
-class DashboardView extends StatefulWidget {
+class FloodDetailsPage extends StatefulWidget {
   @override
-  _DashboardViewState createState() => _DashboardViewState();
+  _FloodDetailsPageState createState() => _FloodDetailsPageState();
 }
 
-class _DashboardViewState extends State<DashboardView> {
-  String activeDisaster = "Loading...";
-  String activeDisasterType = ""; // Stores the type of active disaster
+class _FloodDetailsPageState extends State<FloodDetailsPage> {
+  List<dynamic> highRiskStates = [];
+  String additionalInsights = "";
+  String readMoreUrl = "";
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    fetchDisasterData();
+    fetchFloodDetails();
   }
 
-  Future<void> fetchDisasterData() async {
-    final urls = {
-      "Earthquake": 'https://my-python-app-wwb655aqwa-uc.a.run.app/',
-      "Flood":
-          'https://water-level-model-bsbjxt7qdq-el.a.run.app/flood-assessments',
-      "Cyclone": 'https://cyclone-app-vrdkju5xka-el.a.run.app',
-    };
-
+  Future<void> fetchFloodDetails() async {
+    final url =
+        "https://water-level-model-bsbjxt7qdq-el.a.run.app/flood-assessments";
     try {
-      for (var entry in urls.entries) {
-        final response = await http.get(Uri.parse(entry.value));
-
-        if (!mounted) return;
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          if (entry.key == "Earthquake" &&
-              data.containsKey("high_risk_cities") &&
-              data["high_risk_cities"].isNotEmpty) {
-            setState(() {
-              activeDisaster = "Earthquake";
-              activeDisasterType = "Earthquake";
-            });
-            return;
-          }
-
-          if (entry.key == "Flood" &&
-              data.containsKey("high_risk_states") &&
-              data["high_risk_states"].isNotEmpty) {
-            setState(() {
-              activeDisaster = "Flood";
-              activeDisasterType = "Flood";
-            });
-            return;
-          }
-
-          if (entry.key == "Cyclone" &&
-              data.containsKey("current_data") &&
-              data["current_data"]["status"] != "No active cyclones detected") {
-            setState(() {
-              activeDisaster = "Cyclone";
-              activeDisasterType = "Cyclone";
-            });
-            return;
-          }
-        }
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          highRiskStates = data["high_risk_states"];
+          additionalInsights = data["additional_insights"];
+          readMoreUrl = data["read_more_url"];
+          isLoading = false;
+        });
+      } else {
+        throw Exception("Failed to load flood details");
       }
-
-      // If no active disasters found
-      setState(() {
-        activeDisaster = "No active disasters";
-        activeDisasterType = "";
-      });
     } catch (e) {
-      if (!mounted) return;
       setState(() {
-        activeDisaster = "Failed to load data";
-        activeDisasterType = "";
+        isLoading = false;
       });
+      print("Error fetching data: $e");
     }
-  }
-
-  void navigateToDisasterPage() {
-    if (activeDisasterType == "Earthquake") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => DisasterDetailsPage()),
-      );
-    } else if (activeDisasterType == "Flood") {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => FloodDetailsPage()),
-      );
-    }
-    // Uncomment when cyclone page is ready
-    // else if (activeDisasterType == "Cyclone") {
-    //   Navigator.push(
-    //     context,
-    //     MaterialPageRoute(builder: (context) => CycloneDetailsPage()),
-    //   );
-    // }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GridView.builder(
-              shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1.8,
-              ),
-              itemCount: 4,
-              itemBuilder: (context, index) {
-                List<Map<String, dynamic>> cardData = [
-                  {
-                    "title": "Active Disasters",
-                    "count": activeDisaster,
-                    "icon": Icons.warning,
-                  },
-                  {
-                    "title": "Central Inventory",
-                    "count": "150 Items",
-                    "icon": Icons.storage,
-                  },
-                  {
-                    "title": "Ongoing SOS Alerts",
-                    "count": "12",
-                    "icon": Icons.sos,
-                  },
-                  {
-                    "title": "Rescue Teams Deployed",
-                    "count": "30",
-                    "icon": Icons.people,
-                  },
-                ];
-
-                return GestureDetector(
-                  onTap:
-                      index == 0 && activeDisasterType.isNotEmpty
-                          ? navigateToDisasterPage
-                          : null,
-                  child: DashboardCard(
-                    title: cardData[index]["title"],
-                    count: cardData[index]["count"],
-                    icon: cardData[index]["icon"],
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-            // Add Refugee Camp Button
-            Align(
-              alignment: Alignment.center,
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/camp');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    backgroundColor: const Color.fromARGB(255, 124, 138, 163),
-                    elevation: 5,
-                  ),
-                  child: const Text(
-                    "Add Refugee Camp",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class CentralDashboardPage extends StatefulWidget {
-  const CentralDashboardPage({super.key});
-
-  @override
-  State<CentralDashboardPage> createState() => _CentralDashboardPageState();
-}
-
-class _CentralDashboardPageState extends State<CentralDashboardPage> {
-  int _selectedIndex = 0;
-
-  final List<Widget> _pages = [
-    DashboardView(),
-    CommunityPage(),
-    InventoryPage(),
-    SettingsPage(),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text("Central Government Dashboard"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.language, color: Colors.white),
-            onPressed: () {
-              // TODO: Implement Language Change Feature
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.account_circle, color: Colors.white),
-            onPressed: () {
-              // TODO: Implement Profile Page Navigation
-            },
-          ),
-        ],
+        title: Text("Flood Risk Details"),
+        backgroundColor: Colors.blueAccent,
       ),
-      drawer: AppDrawer(),
-      body: Stack(
-        children: [
-          _pages[_selectedIndex],
-          // Floating AI Chatbot Button
-          Positioned(
-            bottom: 90,
-            right: 16,
-            child: FloatingActionButton(
-              backgroundColor: Colors.white,
-              onPressed: () {
-                Navigator.pushNamed(context, '/ai_chatbot');
-              },
-              child: Image.asset('assets/chatbot.png', width: 35, height: 35),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavBar(
-        selectedIndex: _selectedIndex,
-        onTap: _onItemTapped,
-      ),
+      body:
+          isLoading
+              ? Center(child: CircularProgressIndicator())
+              : Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "High-Risk States:",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: highRiskStates.length,
+                        itemBuilder: (context, index) {
+                          final stateData = highRiskStates[index];
+                          return Card(
+                            elevation: 3,
+                            margin: EdgeInsets.symmetric(vertical: 6),
+                            child: ListTile(
+                              title: Text(
+                                stateData["state"],
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              subtitle: Text(
+                                "Flood Risk Score: ${stateData["flood_risk_score"]}%",
+                              ),
+                              leading: Icon(Icons.warning, color: Colors.red),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      "Insights:",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(additionalInsights, style: TextStyle(fontSize: 14)),
+                    SizedBox(height: 16),
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (readMoreUrl.isNotEmpty) {
+                            // Open the URL for more details
+                            // You may use url_launcher package here
+                          }
+                        },
+                        child: Text("Read More"),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
     );
   }
 }
