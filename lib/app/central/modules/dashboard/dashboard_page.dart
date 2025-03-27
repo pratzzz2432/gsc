@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 import 'package:flutter/material.dart';
 import '../../common/app_drawer.dart';
 import '../../common/bottom_nav.dart';
@@ -5,6 +8,8 @@ import '../../common/dashboard_card.dart';
 import '../community/community_page.dart';
 import '../inventory/inventory_page.dart';
 import '../settings/settings_page.dart';
+import 'disaster_details_page.dart';
+import 'flood_details_page.dart';
 
 // ✅ Dashboard View (Now Fixed)
 class DashboardView extends StatelessWidget {
